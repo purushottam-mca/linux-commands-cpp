@@ -47,6 +47,52 @@ namespace {
         (void)::write(STDOUT_FILENO, msg, std::strlen(msg));
     }
 
+    // Write all bytes handling partial writes and EINTR.
+    // Returns true on success, false on EPIPE (broken pipe) -> should exit quietly,
+    // or other error -> reports to stderr.
+    // For SIGPIPE we ignore signal and handle EPIPE ourselves to match GNU cat behaviour.
+    bool write_all(int out_fd, const char* data, size_t len) {
+        size_t written = 0;
+        while (written < len) {
+            ssize_t n = ::write(out_fd, data + written, len - written);
+            if (n < 0) {
+                if (errno == EINTR) continue;
+                if (errno == EPIPE) {
+                    // Broken pipe (e.g. mycat bigfile | head -n1). Exit silently success.
+                    // GNU cat exits with 0 in this case when stdout is pipe closed.
+                    // We return false to signal caller to stop.
+                    return false;
+                }
+                common::print_error(kProg, "write error");
+                return false;
+            }
+            written += static_cast<size_t>(n);
+        }
+        return true;
+    }
+
+
+    // bulk copy fd -> stdout without line processing.
+    bool cat_bulk(int input_fd) {
+        std::vector<char> buf(kBufSize);
+        while(true){
+            ssize_t nread = ::read(input_fd, buf.data(), buf.size());
+            if(nread < 0){
+                if (errno == EINTR) continue;
+                return false;
+            }
+            if(nread == 0) break; // EOF
+            if(!write_all(STDOUT_FILENO, buf.data(), static_cast<size_t>(nread))) {
+                // EPIPE -> quiet exit, treat as success for pipeline
+                // If write_all failed due to EPIPE we want to exit 0, not error.
+                // Detect via errno
+                if (errno == EPIPE) return true;
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool cat_file(const std::string& path, Options opts, size_t& line_no, bool& had_error) {
         int raw_fd = -1;
         common::UniqueFd owned_fd;
@@ -54,7 +100,7 @@ namespace {
 
         if(is_stdin){
             raw_fd = STDIN_FILENO;
-        }else{
+        } else {
             int fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
             if(fd < 0){
                 common::print_error(kProg, path);
@@ -72,10 +118,23 @@ namespace {
             }
             raw_fd = owned_fd.get();
         }
-        return true;
+
+        bool ok = true;
+        // fast (when no option is passed with mycat)
+        if(!opts.number_all && !opts.number_nonblank && !opts.show_ends) {
+            ok = cat_bulk(raw_fd);
+            if(!ok && errno != EPIPE){
+                int saved = errno;
+                common::print_error(kProg, path, saved);
+                had_error = true;
+            } else if (!ok && errno == EPIPE) {
+                ok = true;
+            }
+        } 
+        return ok;
     }
 
-};
+}
 
 
 int main(int argc, char* argv[]) {
