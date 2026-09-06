@@ -48,9 +48,32 @@ namespace {
     }
 
     bool cat_file(const std::string& path, Options opts, size_t& line_no, bool& had_error) {
+        int raw_fd = -1;
+        common::UniqueFd owned_fd;
+        bool is_stdin = (path == "-");
+
+        if(is_stdin){
+            raw_fd = STDIN_FILENO;
+        }else{
+            int fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+            if(fd < 0){
+                common::print_error(kProg, path);
+                had_error = true;
+                return false;
+            }
+            owned_fd.reset(fd);
+
+            // if it's a directory then error like cat: "Is a directory"
+            struct stat st{};
+            if (::fstat(owned_fd.get(), &st) == 0 && S_ISDIR(st.st_mode)) {
+                common::print_error(kProg, path, EISDIR);
+                had_error = true;
+                return false;
+            }
+            raw_fd = owned_fd.get();
+        }
         return true;
     }
-
 
 };
 
