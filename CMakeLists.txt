@@ -18,5 +18,6 @@ target_include_directories(common INTERFACE src/common)
 
 # Commands
 add_subdirectory(src/cat)
+add_subdirectory(src/ls)
 
 enable_testing()

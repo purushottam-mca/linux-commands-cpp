@@ -4,7 +4,7 @@ Rebuilding 10 Linux commands from scratch with **Modern C++20 and POSIX** to lea
 
 ## Command List
 - `mycat` :- (`-n -b -E`, bulk + line mode, SIGPIPE/EINTR, 64K buffer, RAII `UniqueFd`)
-- `myls` 
+- `myls` :- (`-a`, `-l`, `getdents64` `readdir` + `lstat`)
 - `mychmod`
 - `myln`
 - `myrm`
