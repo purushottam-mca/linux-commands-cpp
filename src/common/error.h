@@ -4,6 +4,8 @@
 #include <cstring>
 #include <string>
 
+#include <unistd.h>  // STDERR_FILENO (keep this header self-contained)
+
 #include "write_all.h"
 
 namespace common {

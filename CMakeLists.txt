@@ -7,6 +7,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -Wpedantic -Werror=return-type)
 
+# Always emit build/compile_commands.json so clangd / C/C++ IntelliSense
+# resolve headers (including src/common/*) correctly.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(-g -O0 -fsanitize=address,undefined)
     add_link_options(-fsanitize=address,undefined)
