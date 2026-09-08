@@ -10,8 +10,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "common/error.h"
-#include "common/unique_fd.h"
+#include "error.h"
+#include "unique_fd.h"
 
 // mycat - simplified cat in Modern C++20 + POSIX.
 // Supports: cat [OPTION]... [FILE]...
@@ -72,7 +72,7 @@ namespace {
     }
 
 
-    // bulk copy fd -> stdout without line processing.
+    // cat to stdout without line processing.
     bool cat_bulk(int input_fd) {
         std::vector<char> buf(kBufSize);
         while(true){
@@ -92,6 +92,88 @@ namespace {
         }
         return true;
     }
+
+    // cat with line-numbering / show-ends.
+    // We must buffer input and emit line by line to handle $ and numbering.
+    bool cat_with_options(int in_fd, Options opts, size_t& line_no) {
+        std::vector<char> buf(kBufSize);
+        std::string pending; // leftover without newline from previous read
+        pending.reserve(kBufSize);
+
+        auto flush_line = [&](std::string_view line, bool has_newline) -> bool {
+            // line does NOT include newline. has_newline indicates original had \n
+            std::string out;
+            out.reserve(line.size() + 32);
+
+            bool should_number = false;
+            if (opts.number_nonblank) {
+                should_number = !line.empty();
+            } else if (opts.number_all) {
+                should_number = true;
+            }
+
+            if (should_number) {
+                // GNU cat: "%6zu\t" with width 6, right-aligned
+                char numbuf[32];
+                int len = std::snprintf(numbuf, sizeof(numbuf), "%6zu\t", line_no++);
+                out.append(numbuf, static_cast<size_t>(len));
+            }
+
+            out.append(line);
+            if (opts.show_ends && has_newline) out.push_back('$');
+            if (has_newline) out.push_back('\n');
+
+            // For lines without trailing newline (EOF without \n), GNU cat does NOT show $
+            return write_all(STDOUT_FILENO, out.data(), out.size());
+        };
+
+        // pending may contain previous partial line. We append new reads and scan for \n.
+        // To avoid O(n^2) we use index scanning.
+        std::string carry;
+        carry.reserve(kBufSize);
+
+        while (true) {
+            ssize_t nread = ::read(in_fd, buf.data(), buf.size());
+            if (nread < 0) {
+                if (errno == EINTR) continue;
+                return false;
+            }
+            if (nread == 0) break;
+
+            size_t start = 0;
+            // If we have carry from previous, prepend logically: we maintain carry + new buf scanning
+            // Simpler: append to carry, scan, keep leftover.
+            carry.append(buf.data(), static_cast<size_t>(nread));
+
+            size_t pos = 0;
+            while (true) {
+                size_t nl = carry.find('\n', pos);
+                if (nl == std::string::npos) break;
+                std::string_view line(carry.data() + pos, nl - pos);
+                if (!flush_line(line, true)) {
+                    if (errno == EPIPE) return true;
+                    return false;
+                }
+                pos = nl + 1;
+            }
+            // Keep leftover
+            if (pos > 0) {
+                carry.erase(0, pos);
+            }
+            // Continue loop, carry holds incomplete last line
+            (void)start; // unused
+        }
+
+        // EOF: flush remaining if any (line without trailing newline)
+        if (!carry.empty()) {
+            if (!flush_line(std::string_view(carry.data(), carry.size()), false)) {
+                if (errno == EPIPE) return true;
+                return false;
+            }
+        }
+        return true;
+    }
+
 
     bool cat_file(const std::string& path, Options opts, size_t& line_no, bool& had_error) {
         int raw_fd = -1;
@@ -130,7 +212,16 @@ namespace {
             } else if (!ok && errno == EPIPE) {
                 ok = true;
             }
-        } 
+        } else {
+            ok = cat_with_options(raw_fd, opts, line_no);
+            if (!ok && errno != EPIPE) {
+                int saved = errno;
+                common::print_error(kProg, path, saved);
+                had_error = true;
+            } else if (!ok && errno == EPIPE) {
+                ok = true;
+            }
+        }
         return ok;
     }
 

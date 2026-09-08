@@ -14,7 +14,7 @@ endif()
 
 # Common header-only library
 add_library(common INTERFACE)
-target_include_directories(common INTERFACE src/common/include)
+target_include_directories(common INTERFACE src/common)
 
 # Commands
 add_subdirectory(src/cat)

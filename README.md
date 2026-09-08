@@ -25,7 +25,7 @@ bash tests/test_cat.sh ./build/bin/mycat
 
 ### Structure
 ```
-src/common/include/common/  # UniqueFd, error helpers
+src/common/                 # UniqueFd, error helpers
 src/cat/                    # cat command
 docs/cat.md                 # deep dive
 tests/test_cat.sh           # golden tests vs GNU cat

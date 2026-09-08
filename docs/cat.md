@@ -1,7 +1,7 @@
 # `cat` Deep Dive: File I/O Fundamentals
 
 - **Implementation:** [src/cat/main.cpp](../src/cat/main.cpp)
-- **RAII file-descriptor wrapper:** [unique_fd.h](../src/common/include/common/unique_fd.h)
+- **RAII file-descriptor wrapper:** [unique_fd.h](../src/common/unique_fd.h)
 
 ## Contents
 
