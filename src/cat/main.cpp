@@ -12,6 +12,7 @@
 
 #include "error.h"
 #include "unique_fd.h"
+#include "write_all.h"
 
 // mycat - simplified cat in Modern C++20 + POSIX.
 // Supports: cat [OPTION]... [FILE]...
@@ -44,7 +45,7 @@ namespace {
             "  -E  display $ at end of each line\n"
             "  -n  number all output lines\n"
             "      --help  display this help\n";
-        (void)::write(STDOUT_FILENO, msg, std::strlen(msg));
+        (void)common::write_all(STDOUT_FILENO, msg, std::strlen(msg));
     }
 
     // Write all bytes handling partial writes and EINTR.
@@ -52,23 +53,15 @@ namespace {
     // or other error -> reports to stderr.
     // For SIGPIPE we ignore signal and handle EPIPE ourselves to match GNU cat behaviour.
     bool write_all(int out_fd, const char* data, size_t len) {
-        size_t written = 0;
-        while (written < len) {
-            ssize_t n = ::write(out_fd, data + written, len - written);
-            if (n < 0) {
-                if (errno == EINTR) continue;
-                if (errno == EPIPE) {
-                    // Broken pipe (e.g. mycat bigfile | head -n1). Exit silently success.
-                    // GNU cat exits with 0 in this case when stdout is pipe closed.
-                    // We return false to signal caller to stop.
-                    return false;
-                }
-                common::print_error(kProg, "write error");
-                return false;
-            }
-            written += static_cast<size_t>(n);
+        if (common::write_all(out_fd, data, len)) return true;
+        if (errno == EPIPE) {
+            // Broken pipe (e.g. mycat bigfile | head -n1). Exit silently success.
+            // GNU cat exits with 0 in this case when stdout is pipe closed.
+            // We return false to signal caller to stop.
+            return false;
         }
-        return true;
+        common::print_error(kProg, "write error");
+        return false;
     }
 
 
@@ -271,7 +264,7 @@ int main(int argc, char* argv[]) {
                     // Unknown option
                     std::string err = std::string(kProg) + ": invalid option -- '" + c + "'\n" +
                                       "Try '" + kProg + " --help' for more information.\n";
-                    (void)::write(STDERR_FILENO, err.c_str(), err.size());
+                    (void)common::write_all(STDERR_FILENO, err.c_str(), err.size());
                     return 1;
                 }
             }
