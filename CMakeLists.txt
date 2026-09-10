@@ -9,7 +9,7 @@ add_compile_options(-Wall -Wextra -Wpedantic -Werror=return-type)
 
 # Always emit build/compile_commands.json so clangd / C/C++ IntelliSense
 # resolve headers (including src/common/*) correctly.
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(-g -O0 -fsanitize=address,undefined)
@@ -18,7 +18,7 @@ endif()
 
 # Common header-only library
 add_library(common INTERFACE)
-target_include_directories(common INTERFACE src/common)
+target_include_directories(common INTERFACE src)
 
 # Commands
 add_subdirectory(src/cat)

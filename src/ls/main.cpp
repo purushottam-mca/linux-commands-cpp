@@ -9,9 +9,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "error.h"
-#include "unique_dir.h"
-#include "write_all.h"
+#include "common/errors.h"
+#include "common/unique_dir.h"
 
 namespace {
 constexpr const char* kProg = "myls";
@@ -35,7 +34,7 @@ std::string mode_string(mode_t m) {
 void emit(const std::string& line) {
     std::string out = line + "\n";
     // Best-effort write; failures (e.g. EPIPE with SIGPIPE default) are ignored.
-    (void)common::write_all(STDOUT_FILENO, out.c_str(), out.size());
+    (void)::write(STDOUT_FILENO, out.c_str(), out.size());
 }
 
 // List one directory. Uses lstat so symlinks are shown, not followed.
@@ -93,7 +92,7 @@ int main(int argc, char* argv[]) {
                 else if (a[k] == 'l') long_fmt = true;
                 else {
                     std::string e = std::string(kProg) + ": invalid option -- '" + a[k] + "'\n";
-                    (void)common::write_all(STDERR_FILENO, e.c_str(), e.size());
+                    (void)::write(STDERR_FILENO, e.c_str(), e.size());
                     return 1;
                 }
             }

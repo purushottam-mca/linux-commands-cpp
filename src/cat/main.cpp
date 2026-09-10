@@ -10,9 +10,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "error.h"
-#include "unique_fd.h"
-#include "write_all.h"
+#include "common/errors.h"
+#include "common/unique_fd.h"
 
 // mycat - simplified cat in Modern C++20 + POSIX.
 // Supports: cat [OPTION]... [FILE]...
@@ -45,15 +44,15 @@ namespace {
             "  -E  display $ at end of each line\n"
             "  -n  number all output lines\n"
             "      --help  display this help\n";
-        (void)common::write_all(STDOUT_FILENO, msg, std::strlen(msg));
+        (void)::write(STDOUT_FILENO, msg, std::strlen(msg));
     }
 
     // Write all bytes handling partial writes and EINTR.
     // Returns true on success, false on EPIPE (broken pipe) -> should exit quietly,
     // or other error -> reports to stderr.
     // For SIGPIPE we ignore signal and handle EPIPE ourselves to match GNU cat behaviour.
-    bool write_all(int out_fd, const char* data, size_t len) {
-        if (common::write_all(out_fd, data, len)) return true;
+    bool write(int out_fd, const char* data, size_t len) {
+        if (::write(out_fd, data, len)) return true;
         if (errno == EPIPE) {
             // Broken pipe (e.g. mycat bigfile | head -n1). Exit silently success.
             // GNU cat exits with 0 in this case when stdout is pipe closed.
@@ -75,9 +74,9 @@ namespace {
                 return false;
             }
             if(nread == 0) break; // EOF
-            if(!write_all(STDOUT_FILENO, buf.data(), static_cast<size_t>(nread))) {
+            if(!write(STDOUT_FILENO, buf.data(), static_cast<size_t>(nread))) {
                 // EPIPE -> quiet exit, treat as success for pipeline
-                // If write_all failed due to EPIPE we want to exit 0, not error.
+                // If write failed due to EPIPE we want to exit 0, not error.
                 // Detect via errno
                 if (errno == EPIPE) return true;
                 return false;
@@ -117,7 +116,7 @@ namespace {
             if (has_newline) out.push_back('\n');
 
             // For lines without trailing newline (EOF without \n), GNU cat does NOT show $
-            return write_all(STDOUT_FILENO, out.data(), out.size());
+            return write(STDOUT_FILENO, out.data(), out.size());
         };
 
         // pending may contain previous partial line. We append new reads and scan for \n.
@@ -264,7 +263,7 @@ int main(int argc, char* argv[]) {
                     // Unknown option
                     std::string err = std::string(kProg) + ": invalid option -- '" + c + "'\n" +
                                       "Try '" + kProg + " --help' for more information.\n";
-                    (void)common::write_all(STDERR_FILENO, err.c_str(), err.size());
+                    (void)::write(STDERR_FILENO, err.c_str(), err.size());
                     return 1;
                 }
             }
@@ -291,7 +290,7 @@ int main(int argc, char* argv[]) {
         // Check if stdout is broken.
         bool ok = cat_file(f, opts, line_no, had_error);
         if (!ok && errno == EPIPE) {
-            // Broken pipe from write_all -> exit successfully (GNU behavior)
+            // Broken pipe from write -> exit successfully (GNU behavior)
             return 0;
         }
         // Also check if stdout write failed inside cat_file and set EPIPE
