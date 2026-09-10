@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "common/errors.h"
+#include "common/io.h"
 #include "common/unique_fd.h"
 
 // mycat - simplified cat in Modern C++20 + POSIX.
@@ -44,7 +45,7 @@ namespace {
             "  -E  display $ at end of each line\n"
             "  -n  number all output lines\n"
             "      --help  display this help\n";
-        (void)::write(STDOUT_FILENO, msg, std::strlen(msg));
+        (void)common::write_all(STDOUT_FILENO, msg, std::strlen(msg));
     }
 
     // Write all bytes handling partial writes and EINTR.
@@ -263,7 +264,7 @@ int main(int argc, char* argv[]) {
                     // Unknown option
                     std::string err = std::string(kProg) + ": invalid option -- '" + c + "'\n" +
                                       "Try '" + kProg + " --help' for more information.\n";
-                    (void)::write(STDERR_FILENO, err.c_str(), err.size());
+                    (void)common::write_all(STDERR_FILENO, err.c_str(), err.size());
                     return 1;
                 }
             }

@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "common/errors.h"
+#include "common/io.h"
 #include "common/unique_dir.h"
 
 namespace {
@@ -37,7 +38,7 @@ bool apply_one(const std::string& path, mode_t mode, bool verbose, bool& err) {
         char buf[1024];
         int n = std::snprintf(buf, sizeof(buf), "changed '%s' to %04o\n",
                               path.c_str(), mode);
-        if (n > 0) (void)::write(STDOUT_FILENO, buf, n);
+        if (n > 0) (void)common::write_all(STDOUT_FILENO, buf, static_cast<std::size_t>(n));
     }
     return true;
 }
@@ -93,13 +94,13 @@ int main(int argc, char* argv[]) {
     }
     if (mode_str.empty() || files.empty()) {
         const char* m = "Usage: mychmod [-R] [-v] MODE FILE...\n";
-        (void)::write(STDERR_FILENO, m, std::strlen(m));
+        (void)common::write_all(STDERR_FILENO, m, std::strlen(m));
         return 1;
     }
     mode_t mode = 0;
     if (!parse_octal(mode_str, mode)) {
         std::string e = std::string(kProg) + ": invalid mode '" + mode_str + "' (use octal, e.g. 755)\n";
-        (void)::write(STDERR_FILENO, e.c_str(), e.size());
+        (void)common::write_all(STDERR_FILENO, e.c_str(), e.size());
         return 1;
     }
     bool err = false;
