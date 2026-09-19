@@ -1,4 +1,4 @@
-# Linux Commands: C++ Reimplementation
+# Linux Commands: (Built in C++)
 
 Rebuilding 10 Linux commands from scratch with **Modern C++20 and POSIX** to learn Linux internals and system design.
 
