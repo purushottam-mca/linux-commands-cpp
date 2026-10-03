@@ -6,7 +6,7 @@ Rebuilding 10 Linux commands from scratch with **Modern C++20 and POSIX** to lea
 - `mycat` :- (`-n -b -E`, bulk + line mode, SIGPIPE/EINTR, 64K buffer, RAII `UniqueFd`)
 - `myls` :- (`-a`, `-l`, `getdents64` `readdir` + `lstat`)
 - `mychmod`
-- `myln`
+- `myln` :- (`-s`, `-f`, `link`/`symlink`, `unlink` first for force)
 - `myrm`
 - `mycp`
 - `mymv`

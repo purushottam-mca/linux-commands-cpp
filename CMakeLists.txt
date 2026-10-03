@@ -24,5 +24,6 @@ target_include_directories(common INTERFACE src)
 add_subdirectory(src/cat)
 add_subdirectory(src/ls)
 add_subdirectory(src/chmod)
+add_subdirectory(src/ln)
 
 enable_testing()
