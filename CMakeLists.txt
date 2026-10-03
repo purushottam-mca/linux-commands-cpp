@@ -25,5 +25,6 @@ add_subdirectory(src/cat)
 add_subdirectory(src/ls)
 add_subdirectory(src/chmod)
 add_subdirectory(src/ln)
+add_subdirectory(src/rm)
 
 enable_testing()
