@@ -7,7 +7,7 @@ Rebuilding 10 Linux commands from scratch with **Modern C++20 and POSIX** to lea
 - `myls` :- (`-a`, `-l`, `getdents64` `readdir` + `lstat`)
 - `mychmod`
 - `myln` :- (`-s`, `-f`, `link`/`symlink`, `unlink` first for force)
-- `myrm`
+- `myrm` :- (`-r`, `-f`, `unlink`/`rmdir` depth-first, `lstat` so symlinks never followed)
 - `mycp`
 - `mymv`
 - `myfind`
